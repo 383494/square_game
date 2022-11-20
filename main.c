@@ -7,8 +7,11 @@
 #define SIDEX 10
 #define SIDEY 10
 #define BARLEN 70
-#define SCRLEN (600+2*SIDEX)
-#define SCRWID (600+2*SIDEY+BARLEN)
+#define BOXLEN 150
+#define BOXWID BOXLEN
+#define BOXNUM 6
+#define SCRLEN (BOXNUM*BOXLEN+2*SIDEX)
+#define SCRWID (BOXNUM*BOXWID+2*SIDEY+BARLEN)
 #define OUTPUT(x,...) printf(x,##__VA_ARGS__)
 
 SDL_Window* win = NULL;
@@ -20,7 +23,7 @@ bool pos = 1;
 int playerx=0, playery=0;
 square_game_t *game = NULL;
 
-void quitall(int){
+void quitall(int a){
 	if(ren) SDL_DestroyRenderer(ren);
 	if(win) SDL_DestroyWindow(win);
 	if(num[0])
@@ -43,10 +46,10 @@ void disp_number(int x){
 
 static inline void draw_screen(){
 	SDL_SetRenderTarget(ren, NULL);
-//	SDL_RenderCopy(ren, bg, NULL, (SDL_Rect[]){0+SIDEX,0+SIDEY,600,600});
-	SDL_RenderCopy(ren, bg, NULL, NULL); 
+	SDL_RenderCopy(ren, bg, NULL, (SDL_Rect[]){0,0,SCRLEN,SCRWID});
+//	SDL_RenderCopy(ren, bg, NULL, NULL); 
 	SDL_SetRenderDrawColor(ren, game->turn?255:0, game->turn?0:255, 0, 255);
-	SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*100+50+SIDEX, playery*100+50+SIDEY, 10, 10});
+	SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*BOXLEN+BOXLEN/3+SIDEX, playery*BOXWID+BOXWID/3+SIDEY, BOXLEN/5, BOXWID/5});
 	disp_number(game->score[game->turn?0:1]);
 	SDL_RenderCopy(ren, num[move?0:1], NULL, (SDL_Rect[]){10,SCRWID-60, 30, 50});
 
@@ -57,27 +60,27 @@ void click(int x, int y){
 	bool l=x<SCRLEN/3, r=x>SCRLEN*2/3, u=y<SCRLEN/3, d=y>SCRLEN*2/3;
 	if((l||r)&&(u||d))move = !move;
 	else if(move){
-		if(l) playerx = ((playerx+5)%6);
-		else if(r) playerx = (playerx+1)%6;
-		else if(u) playery = ((playery+5)%6);
-		else if(d) playery = (playery+1)%6;
+		if(l) playerx = ((playerx+BOXNUM-1)%BOXNUM);
+		else if(r) playerx = (playerx+1)%BOXNUM;
+		else if(u) playery = ((playery+BOXNUM-1)%BOXNUM);
+		else if(d) playery = (playery+1)%BOXNUM;
 	} else {
 		SDL_SetRenderTarget(ren, bg);
 		if(l) {
 			Squ_step(game, playerx, playery+1, true);
-			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*100-10+SIDEX, playery*100-10+SIDEY, 20, 120});
+			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*BOXLEN-10+SIDEX, playery*BOXWID-10+SIDEY, 20, BOXWID+20});
 		}
 		else if(r) {
 			Squ_step(game, playerx+1, playery+1, true);
-			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*100+90+SIDEX, playery*100-10+SIDEY, 20, 120});
+			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*BOXLEN+BOXLEN-10+SIDEX, playery*BOXWID-10+SIDEY, 20, BOXWID+20});
 		}
 		else if(u) {
 			Squ_step(game, playerx+1, playery, false);
-			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*100-10+SIDEX, playery*100-10+SIDEY, 120, 20});
+			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*BOXLEN-10+SIDEX, playery*BOXWID-10+SIDEY, BOXLEN+20, 20});
 		}
 		else if(d) {
 			Squ_step(game, playerx+1, playery+1, false);
-			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*100-10+SIDEX, playery*100+90+SIDEY, 120, 20});
+			SDL_RenderFillRect(ren, (SDL_Rect[]){playerx*BOXLEN-10+SIDEX, playery*BOXWID+BOXLEN-10+SIDEY, BOXLEN+20, 20});
 		}
 	}
 	draw_screen();
@@ -113,9 +116,9 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	bg = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, 600+2*SIDEX, 600+2*SIDEY+BARLEN);
+	bg = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_TARGET, SCRLEN, SCRWID);
 	for(int i=0; i<10; i++){
-		num[i] = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, 3, 5);
+		num[i] = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_TARGET, 3, 5);
 		SDL_SetRenderTarget(ren, num[i]);
 		SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
 		SDL_RenderClear(ren);
@@ -155,11 +158,11 @@ int main(int argc, char *argv[]) {
 	SDL_SetRenderTarget(ren, bg);
 	SDL_SetRenderDrawColor(ren, 255, 255, 0, 255);
 	SDL_RenderClear(ren);
-	game = new_square_game(6,6);
-	for(int i=1; i<=6; ++i){
-	for(int j=1; j<=6; ++j){
+	game = new_square_game(BOXNUM,BOXNUM);
+	for(int i=1; i<=BOXNUM; ++i){
+	for(int j=1; j<=BOXNUM; ++j){
 		scanf("%hhd", &game->map[i][j].value);
-		SDL_RenderCopy(ren, num[game->map[i][j].value], NULL, (SDL_Rect[]){i*100-67+SIDEX, j*100-67+SIDEY, 33, 33});
+		SDL_RenderCopy(ren, num[game->map[i][j].value], NULL, (SDL_Rect[]){i*BOXLEN-BOXLEN*2/3+SIDEX, j*BOXWID-BOXLEN*2/3+SIDEY, BOXLEN/3, BOXLEN/3});
 	}
 	}
 	draw_screen();
@@ -173,9 +176,9 @@ int main(int argc, char *argv[]) {
 				case SDL_MOUSEBUTTONDOWN:
 					click(ev.button.x, ev.button.y);
 					break;
-				case SDL_FINGERDOWN:
-					click((int)ev.tfinger.x*SCRLEN, (int)ev.tfinger.y*SCRWID);
-					break;
+//				case SDL_FINGERUP:
+//					click((int)ev.tfinger.x*SCRLEN, (int)ev.tfinger.y*SCRWID);
+//					break;
 			}
 		}
 	}
